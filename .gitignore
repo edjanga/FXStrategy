@@ -5,5 +5,4 @@ venv/
 venv
 .idea
 .DS_Store
-pages/__pycache__/
-papages/__pycache__
+__pycache__
