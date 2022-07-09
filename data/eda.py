@@ -1,17 +1,19 @@
 import pandas as pd
 import datetime
+from scipy.stats import mode
 from statsmodels.tsa.ar_model import AutoReg
 from statsmodels.stats.stattools import jarque_bera,durbin_watson
 from statsmodels.tsa.stattools import adfuller
 import sqlite3 as sql
+import pdb
 
 
 class EDA(object):
     """
         Class used to proceed to explanatory data analysis
     """
-    def __init__(self,df):
-
+    def __init__(self,df,name):
+        self.name = name
         #to_period('D') needed to fit AR(1) for tests using residuals below
         try:
             df.index = pd.to_datetime(df.index).to_period('D')
@@ -55,17 +57,21 @@ class EDA(object):
                                   lambda x:x.isnull().sum()]).transpose()
         summary_df.columns = ['mean','median','std','max','min','skew','kurtosis',\
                               'first_valid_index','last_valid_index','qtyNA']
-        mode_df = self.df.apply(pd.Series.mode).transpose().rename(columns={0:'mode'})
+        mode_df = self.df.apply(lambda x:mode(x[x.first_valid_index():].ffill())[0]).\
+            transpose().rename(columns={0:'mode'})
         summary_df = summary_df.join(mode_df,how='inner')
         return summary_df
+
     @staticmethod
     def residuals_ar(series_s):
         """
         :return: residuals from AR(1) model run on series_s
         """
+
         model_obj = AutoReg(series_s,lags=1)
         model = model_obj.fit()
         return model.resid
+
     def tests(self):
 
         """
@@ -75,11 +81,9 @@ class EDA(object):
                           positive | DW = 2 ==> no correlation | negative
                  - ADF: H0 non-stationary
         """
-
-        test_df = self.df.agg([lambda x:jarque_bera(x[x.first_valid_index():])[1],\
-                               lambda x:durbin_watson(EDA.residuals_ar(x[x.first_valid_index():])),\
-                               lambda x:adfuller(x[x.first_valid_index():])[1]
-                               ])
+        test_df = self.df.agg([lambda x:jarque_bera(x[x.first_valid_index():].ffill())[1],\
+                  lambda x:durbin_watson(EDA.residuals_ar(x[x.first_valid_index():].ffill())),\
+                  lambda x:adfuller(x[x.first_valid_index():].ffill())[1]])
         test_df = test_df.transpose()
         test_df.columns = ['jarque_bera','durbin_watson','adf']
         test_df = test_df.round(4)
@@ -103,7 +107,7 @@ if __name__ == '__main__':
     container_dd = {'spot': spot_df, 'fwd': fwd_df}
     print(f'[INSERTION]: Process has started @ {datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")}')
     for name,df in container_dd.items():
-        eda_obj = EDA(spot_df)
+        eda_obj = EDA(df,name)
         overall_stats_df = eda_obj.overall_stats()
         name = '_'.join((name,'eda'))
         overall_stats_df.to_sql(con=conn,if_exists='replace',name=name)

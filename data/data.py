@@ -9,7 +9,7 @@ import datetime
 
 if __name__ == '__main__':
 
-    with open('currency_info.json','r') as f:
+    with open('data/currency_info.json', 'r') as f:
         config = json.load(f)
     config = {key:value[0] for key,value in config.items()}
     config = pd.DataFrame(config).transpose()
@@ -69,20 +69,21 @@ if __name__ == '__main__':
             fwdp_df = fwdp_df.transpose()
             fwdp_df = fwdp_df.apply(lambda x: x * fxMult_s)
             fwdp_df = fwdp_df.transpose()
+            fwdp_df = fwdp_df.ffill()
     # fwd = spot + fxMult * 1Mfwdp
     fwd_df = spot_df+fwdp_df
     conn = sql.connect('data/fx_pair.db')
     spot_df.to_sql(con=conn,if_exists='replace',name='spot')
     fwd_df.to_sql(con=conn,if_exists='replace', name='fwd')
     # Insertion of Rebalance dates and VIX
-    rebalance_df = pd.read_csv('RebalanceDates.csv')
-    vix_df = pd.read_csv('VIX.csv')
+    rebalance_df = pd.read_csv('data/RebalanceDates.csv')
+    vix_df = pd.read_csv('data/VIX.csv')
     container_dd = {'rebalance':rebalance_df,'vix':vix_df}
     for name,df in container_dd.items():
         df['Date'] = pd.to_datetime(df['Date'], format='%d %B %Y')
         df = df.set_index('Date')
         df.to_sql(con=conn,if_exists='replace',name=name)
-        print(f'[FILE]: {name} has been inserted into the database.')
+        print(f'[TABLE]: {name} has been inserted into the database.')
     conn.close()
     print(f'[INSERTION]: Process completed @ {datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")}')
 
