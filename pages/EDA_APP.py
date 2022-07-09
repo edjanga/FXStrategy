@@ -20,13 +20,18 @@ stats_fwd_df = pd.read_sql(con=conn,sql='SELECT \"index\",mean,median,std,\"max\
 container_dd = {'spot':spot_df,'fwd':fwd_df}
 container_stats_dd = {'spot':stats_spot_df,'fwd':stats_fwd_df}
 
-dash_app.title = 'Dashboard | EDA'
+dash_app.title = 'Dashboard | Exploratory Data Analysis'
 
 dash_app.layout = html.Div([html.H1(children=[html.B('Dashboard')],className='header',id='page'),\
-                            html.Div([html.P('Exploratory Data Analysis'),\
+                            html.Div([html.P('Table'),\
                                       html.Br(),\
                                       dcc.RadioItems(['spot', 'fwd'],'spot',inline=True,id='instrument_type'),\
-                                      dcc.Graph(id='stats')])])
+                                      dcc.Graph(id='stats')]),\
+                            html.Div([html.P('Plot'),\
+                                      html.Br(), \
+                                      dcc.RadioItems(['line','distribution'],'line',inline=True,id='plot_type'),\
+                                      dcc.Graph(id='plot')])
+                            ])
 
 @dash_app.callback(
     Output(component_id='stats',component_property='figure'),
@@ -44,3 +49,16 @@ def stats_table(value):
                                            columnwidth = [150]+[80]*(df.shape[1]-1))])
     table_stats.update_layout(margin={'t':10,'b':10},height=250)
     return table_stats
+@dash_app.callback(
+    Output(component_id='plot',component_property='figure'),
+    [Input(component_id='plot_type',component_property='value'),
+     Input(component_id='instrument_type',component_property='value')]
+)
+def plot(plot,instrument):
+    df = container_dd[instrument]
+    temp_df = pd.melt(df.reset_index(),var_name='currency', value_name='value', id_vars='index')
+    if plot == 'line':
+        fig = px.line(data_frame=temp_df,x='index',y='value',color='currency')
+    elif plot == 'distribution':
+        fig = px.histogram(data_frame=temp_df,y='value',color='currency',marginal='violin')
+    return fig
