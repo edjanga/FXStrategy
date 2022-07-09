@@ -1,0 +1,8 @@
+data/*.csv
+*.pdf
+*.csv
+venv/
+venv
+.idea
+.DS_Store
+__pycache__
