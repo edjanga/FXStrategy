@@ -102,13 +102,14 @@ class EDA(object):
 
 if __name__ == '__main__':
     conn = sql.connect('data/fx_pair.db')
-    spot_df = pd.read_sql(con=conn,sql="SELECT * FROM spot;",index_col='index')
-    fwd_df = pd.read_sql(con=conn, sql="SELECT * FROM fwd;",index_col='index')
+    spot_df = pd.read_sql(con=conn,sql="SELECT * FROM spot;",index_col='date')
+    fwd_df = pd.read_sql(con=conn, sql="SELECT * FROM fwd;",index_col='date')
     container_dd = {'spot': spot_df, 'fwd': fwd_df}
     print(f'[INSERTION]: Process has started @ {datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")}')
     for name,df in container_dd.items():
         eda_obj = EDA(df,name)
         overall_stats_df = eda_obj.overall_stats()
+        overall_stats_df.index.name = 'date'
         name = '_'.join((name,'eda'))
         overall_stats_df.to_sql(con=conn,if_exists='replace',name=name)
         print(f'[TABLE]: {name} has been inserted into the database.')

@@ -3,6 +3,7 @@ import sqlite3 as sql
 import glob
 import pandas as pd
 import datetime
+import pdb
 
 
 
@@ -73,6 +74,8 @@ if __name__ == '__main__':
     # fwd = spot + fxMult * 1Mfwdp
     fwd_df = spot_df+fwdp_df
     conn = sql.connect('data/fx_pair.db')
+    spot_df.index.name = 'date'
+    fwd_df.index.name = 'date'
     spot_df.to_sql(con=conn,if_exists='replace',name='spot')
     fwd_df.to_sql(con=conn,if_exists='replace', name='fwd')
     # Insertion of Rebalance dates and VIX
@@ -81,7 +84,9 @@ if __name__ == '__main__':
     container_dd = {'rebalance':rebalance_df,'vix':vix_df}
     for name,df in container_dd.items():
         df['Date'] = pd.to_datetime(df['Date'], format='%d %B %Y')
-        df = df.set_index('Date')
+        df = df.set_index('Date').sort_index()
+        df = df.rename(columns={'Line(Q.VIX)':'vix'})
+        df.index.name = 'date'
         df.to_sql(con=conn,if_exists='replace',name=name)
         print(f'[TABLE]: {name} has been inserted into the database.')
     conn.close()
